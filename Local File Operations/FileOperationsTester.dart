@@ -2,13 +2,20 @@ import 'package:path/path.dart' as p;
 import 'dart:io';
 
 void main() {
-  print('Hello World!');
-  var now = DateTime.now();
-  print(now);
+  print("Program execution started at ${DateTime.now()}");
 }
 
-// List directory where program is running from.
+class FileOperator {
+  // List directory where program is running from.
+  Directory getCurrentDirectory() => Directory.current;
   // Organize files and directories based on the type
+  void printOrganizedFiles(Directory directory) {
+    var files = directory.list(recursive: false);
+
+    for (var file in files.) {
+      var name = file.name;
+      }
+  }
 
 // Navigate up the directory tree
   // List files and directories, along with their contents.
@@ -26,3 +33,4 @@ void main() {
 // Open file and read contents
 
 // Create new file and save contents
+}
