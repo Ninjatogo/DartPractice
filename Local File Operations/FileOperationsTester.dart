@@ -3,7 +3,13 @@ import 'dart:io';
 
 void main() {
   var fileOperator = FileOperator();
-  fileOperator.printOrganizedDirectory(fileOperator.getCurrentDirectory());
+
+  ///fileOperator
+  //.printOrganizedDirectoryListing(fileOperator.getCurrentDirectory());
+  //fileOperator.printParentDirectory(fileOperator.getCurrentDirectory());
+  //fileOperator.createNewDirectory("testDirectory");
+  //fileOperator.printCurrentDateAndTime();
+  //fileOperator.printYesterdayDateAndTime();
 }
 
 class FileOperator {
@@ -11,7 +17,7 @@ class FileOperator {
   Directory getCurrentDirectory() => Directory.current;
 
   // Organize files and directories based on the type
-  void printOrganizedDirectory(Directory directory) async {
+  void printOrganizedDirectoryListing(Directory directory) async {
     var folders = List.empty(growable: true);
     var files = List.empty(growable: true);
     var symlinkedFiles = List.empty(growable: true);
@@ -50,16 +56,27 @@ class FileOperator {
 
   // Navigate up the directory tree
   void printParentDirectory(Directory directory) async {
-    // TODO: List files and directories, along with their contents.
+    // Navigate up one directory
+    var parentDir = Directory(getCurrentDirectory().path + '/..');
+    printOrganizedDirectoryListing(parentDir);
   }
 
-// Create new directory and subdirectory
+  // Create new directory
+  void createNewDirectory(String directoryName) async {
+    var newDirectory = Directory(directoryName);
+    newDirectory.create();
+  }
 
   // Display current date and time
-  void printCurrentDateAndTime() {
+  void printCurrentDateAndTime() async {
     print("Current date and time is ${DateTime.now()}");
   }
+
   // Display yesterdays date
+  void printYesterdayDateAndTime() async {
+    print(
+        "Yesterday's date and time is ${DateTime.now().add(const Duration(days: -1))}");
+  }
 
   // Compare dates to compute time difference
   // If date difference is greater than 1 week, return true
