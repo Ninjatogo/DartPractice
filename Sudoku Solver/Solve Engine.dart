@@ -14,7 +14,7 @@ import 'Puzzle.dart';
  */
 
 void main() {
-  var puzzle = new Grid(3);
+  var puzzle = Grid(3);
 
   puzzle.loadLine([9, 0, 0, 0, 0, 0, 4, 0, 0]);
   puzzle.loadLine([0, 0, 0, 5, 0, 0, 0, 0, 0]);
