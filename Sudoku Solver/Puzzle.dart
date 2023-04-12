@@ -20,6 +20,8 @@ class Cell {
   int getValue() => this._currentValue;
   bool getMutability() => this._mutable;
   int getSubGridMarker() => this._subGridMarker;
+  List<int> getPossibilities() => this._possibleValues;
+  int getPossibilityCount() => this._possibleValues.length;
 
   // Returns bool representing whether there are any possible moves left
   bool adjustValue() {
@@ -59,12 +61,12 @@ class Cell {
 }
 
 class OperationHistory {
-  OperationHistory(this.cellRowPosition, this.cellColumnPosition) {
-    //
-  }
+  OperationHistory(this._cellRowPosition, this._cellColumnPosition,
+      this._cellPossibilityCount);
 
-  var cellRowPosition = 0;
-  var cellColumnPosition = 0;
+  var _cellRowPosition = 0;
+  var _cellColumnPosition = 0;
+  var _cellPossibilityCount = 0;
 }
 
 /// Sudoku puzzle object - Use this to 2D array of cell objects
@@ -72,11 +74,12 @@ class OperationHistory {
 class Grid {
   var _gridDiameter = 3;
   var _emptyCellCount = 0;
+  var _backtrackingStepCount = 0;
   List<List<Cell>> _gridCells = [];
   Stack<OperationHistory> _solvedCells = Stack<OperationHistory>();
   Stack<OperationHistory> _cellsToSolve = Stack<OperationHistory>();
 
-  Grid(this._gridDiameter) {}
+  Grid(this._gridDiameter);
 
   void loadLine(List<int> input_cells) {
     List<Cell> cells = [];
@@ -184,6 +187,30 @@ class Grid {
     return solvedCells;
   }
 
+  // Record locations of all unsolved mutable cells in the grid
+  void setupMutableCellStack() {
+    List<OperationHistory> mutableCells = [];
+
+    for (var row = 0; row < _gridCells.length; row++) {
+      for (var column = 0; column < _gridCells[row].length; column++) {
+        if (_gridCells[row][column].getMutability() &&
+            _gridCells[row][column].getValue() == 0) {
+          mutableCells.add(OperationHistory(
+              row, column, _gridCells[row][column].getPossibilityCount()));
+        }
+      }
+    }
+
+    // Sort mutable cells by descending order of possibility count
+    // This is to ensure that operation history stack can be used with MRV hueristic in backtracking
+    mutableCells.sort(
+        (a, b) => b._cellPossibilityCount.compareTo(a._cellPossibilityCount));
+
+    for (var cell in mutableCells) {
+      _cellsToSolve.push(cell);
+    }
+  }
+
   void resetOperationHistoryStacks() {
     if (_solvedCells.isNotEmpty) {
       _solvedCells = new Stack<OperationHistory>();
@@ -198,22 +225,14 @@ class Grid {
     var puzzleSolved = false;
     resetOperationHistoryStacks();
 
-    // Record locations of all unsolved mutable cells in the grid
-    for (var row = 0; row < _gridCells.length; row++) {
-      for (var column = 0; column < _gridCells[row].length; column++) {
-        if (_gridCells[row][column].getMutability() &&
-            _gridCells[row][column].getValue() == 0) {
-          _cellsToSolve.push(OperationHistory(row, column));
-        }
-      }
-    }
+    setupMutableCellStack();
 
     puzzleSolved = backtrackStep();
 
     return puzzleSolved;
   }
 
-  bool checkCellLagality(int row, int column) {
+  bool checkCellLegality(int row, int column) {
     var cellValue = _gridCells[row][column].getValue();
 
     // Check whether cell is legal in row
@@ -257,31 +276,39 @@ class Grid {
     return true;
   }
 
+  // Calculate LCV score for cell
+  int calculateLcvScore(int row, int column) {
+    var cellValue = _gridCells[row][column].getValue();
+
+    return 0;
+  }
+
   // Returns true if move was successful, false if move failed
   bool backtrackStep() {
     if (_cellsToSolve.isEmpty) {
       return true;
     }
+    _backtrackingStepCount += 1;
 
     var moveSuccessful = false;
     var currentOperation = _cellsToSolve.pop();
     _solvedCells.push(currentOperation);
 
-    var movesLeft = _gridCells[currentOperation.cellRowPosition]
-            [currentOperation.cellColumnPosition]
+    var movesLeft = _gridCells[currentOperation._cellRowPosition]
+            [currentOperation._cellColumnPosition]
         .adjustValue();
 
     while (movesLeft) {
-      if (checkCellLagality(currentOperation.cellRowPosition,
-          currentOperation.cellColumnPosition)) {
+      if (checkCellLegality(currentOperation._cellRowPosition,
+          currentOperation._cellColumnPosition)) {
         moveSuccessful = backtrackStep();
         if (moveSuccessful) {
           break;
         }
       }
 
-      movesLeft = _gridCells[currentOperation.cellRowPosition]
-              [currentOperation.cellColumnPosition]
+      movesLeft = _gridCells[currentOperation._cellRowPosition]
+              [currentOperation._cellColumnPosition]
           .adjustValue();
     }
 
@@ -301,7 +328,6 @@ class Grid {
     }
   }
 
-  int getRemainingCellsToSolveCount() {
-    return _emptyCellCount;
-  }
+  int getRemainingCellsToSolveCount() => _emptyCellCount;
+  int getBacktrackingStepCount() => _backtrackingStepCount;
 }
