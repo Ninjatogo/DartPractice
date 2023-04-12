@@ -36,4 +36,5 @@ void main() {
   puzzle.solveViaBacktracking();
   //print('Cells to solve: ${puzzle.getRemainingCellsToSolveCount()}');
   puzzle.printPuzzle();
+  print('Backtracking steps taken: ${puzzle.getBacktrackingStepCount()}');
 }
