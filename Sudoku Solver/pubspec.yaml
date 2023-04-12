@@ -1,0 +1,12 @@
+name: sudoku_solver
+description: A simple Dart sudoku solver project.
+version: 1.0.0
+
+environment:
+  sdk: '>=2.18.6 <3.0.0'
+
+dependencies:
+  tuple: ^2.0.1
+
+dev_dependencies:
+  
