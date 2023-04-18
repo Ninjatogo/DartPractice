@@ -12,37 +12,48 @@ class Cell {
   int _subGridMarker = -1;
 
   Cell(this._currentValue, this._subGridMarker, List<int> possibleValues) {
-    if (this._currentValue == 0) {
-      this._mutable = true;
-      this._possibleValues = possibleValues.toList();
+    if (_currentValue == 0) {
+      _mutable = true;
+      _possibleValues = possibleValues.toList();
     }
   }
 
-  int getValue() => this._currentValue;
-  bool getMutability() => this._mutable;
-  int getSubGridMarker() => this._subGridMarker;
-  List<int> getPossibilities() => this._possibleValues;
-  int getPossibilityCount() => this._possibleValues.length;
+  int getValue() => _currentValue;
+  void setValue(int value) {
+    _currentValue = value;
+  }
+
+  bool getMutability() => _mutable;
+  int getSubGridMarker() => _subGridMarker;
+  List<int> getPossibilities() => _possibleValues;
+  int getPossibilityCount() => _possibleValues.length;
   void setPossibleValues(List<int> possibleValues) {
-    this._possibleValues = possibleValues;
+    _possibleValues = possibleValues;
+  }
+
+  void resetMutableCell() {
+    if (_mutable) {
+      _currentValue = 0;
+      _possibleValueSelection = -1;
+    }
   }
 
   // Returns bool representing whether there are any possible moves left
   bool adjustValue() {
     bool movesLeft = false;
 
-    if (!this._mutable) {
+    if (!_mutable) {
       return movesLeft;
     }
 
-    if (this._possibleValues.length > 0 &&
-        (this._possibleValueSelection + 1 < this._possibleValues.length)) {
-      this._possibleValueSelection += 1;
-      this._currentValue = this._possibleValues[this._possibleValueSelection];
+    if (_possibleValues.isNotEmpty &&
+        (_possibleValueSelection + 1 < _possibleValues.length)) {
+      _possibleValueSelection += 1;
+      _currentValue = _possibleValues[_possibleValueSelection];
       movesLeft = true;
     } else {
-      this._possibleValueSelection = -1;
-      this._currentValue = 0;
+      _possibleValueSelection = -1;
+      _currentValue = 0;
     }
 
     return movesLeft;
@@ -50,12 +61,12 @@ class Cell {
 
   // Use strictly for initial possibility pruning
   bool removePossibility(int value) {
-    if (this._possibleValues.length > 1) {
-      this._possibleValues.remove(value);
+    if (_possibleValues.length > 1) {
+      _possibleValues.remove(value);
     }
-    if (this._possibleValues.length == 1 && this._mutable) {
-      this._currentValue = this._possibleValues.first;
-      this._mutable = false;
+    if (_possibleValues.length == 1 && _mutable) {
+      _currentValue = _possibleValues.first;
+      _mutable = false;
 
       return true;
     }
@@ -65,26 +76,42 @@ class Cell {
 }
 
 class OperationHistory {
-  OperationHistory(this._cellRowPosition, this._cellColumnPosition,
-      this._cellPossibilityCount);
+  OperationHistory(
+      this.cellRowPosition, this.cellColumnPosition, this.cellPossibilityCount);
 
-  var _cellRowPosition = 0;
-  var _cellColumnPosition = 0;
-  var _cellPossibilityCount = 0;
+  var cellRowPosition = 0;
+  var cellColumnPosition = 0;
+  var cellPossibilityCount = 0;
 }
 
 /// Sudoku puzzle object - Use this to 2D array of cell objects
 /// Uses 2D array to store objects for easy addressing when doing move checking
 class Grid {
   var gridDiameter = 3;
-  var emptyCellCount = 0;
-  var backtrackingStepCount = 0;
+  var _emptyCellCount = 0;
+  var _backtrackingStepCount = 0;
   var useMrv = false;
   var useLcv = false;
   var useForwardChecking = false;
+  var puzzlePruned = false;
   List<List<Cell>> _gridCells = [];
   Stack<OperationHistory> _solvedCells = Stack<OperationHistory>();
   Stack<OperationHistory> _cellsToSolve = Stack<OperationHistory>();
+  int getRemainingCellsToSolveCount() => _emptyCellCount;
+  int getBacktrackingStepCount() => _backtrackingStepCount;
+  List<List<int>> getGridCellValues() {
+    List<List<int>> cellValues = [];
+
+    for (var row = 0; row < _gridCells.length; row++) {
+      List<int> rowValues = [];
+      for (var column = 0; column < _gridCells[row].length; column++) {
+        rowValues.add(_gridCells[row][column].getValue());
+      }
+      cellValues.add(rowValues);
+    }
+
+    return cellValues;
+  }
 
   Grid(
       {this.gridDiameter = 3,
@@ -92,16 +119,16 @@ class Grid {
       this.useLcv = false,
       this.useForwardChecking = false});
 
-  void loadLine(List<int> input_cells) {
+  void loadLine(List<int> inputCells) {
     List<Cell> cells = [];
     var row = 1;
-    var possibleValues = [for (var i = 1; i < input_cells.length + 1; i++) i];
+    var possibleValues = [for (var i = 1; i < inputCells.length + 1; i++) i];
 
-    if (_gridCells.length > 0 && (_gridCells.length ~/ gridDiameter) > 0) {
+    if (_gridCells.isNotEmpty && (_gridCells.length ~/ gridDiameter) > 0) {
       row += (_gridCells.length ~/ gridDiameter);
     }
 
-    for (var i = 0; i < input_cells.length; i++) {
+    for (var i = 0; i < inputCells.length; i++) {
       var column = 1;
 
       if (i > 0 && ((i) ~/ gridDiameter > 0)) {
@@ -110,11 +137,11 @@ class Grid {
 
       var subgridMarker = int.parse(row.toString() + column.toString());
 
-      if (input_cells[i] == 0) {
-        emptyCellCount++;
+      if (inputCells[i] == 0) {
+        _emptyCellCount++;
       }
 
-      var cell = Cell(input_cells[i], subgridMarker, possibleValues);
+      var cell = Cell(inputCells[i], subgridMarker, possibleValues);
 
       cells.add(cell);
     }
@@ -122,14 +149,19 @@ class Grid {
     _gridCells.add(cells);
   }
 
-  void pruneCells() {
+  void _pruneCells() {
+    if (puzzlePruned) {
+      return;
+    }
+
     var solvedCells = 0;
     do {
-      solvedCells = pruneCellPossibilities();
+      solvedCells = _pruneCellPossibilities();
     } while (solvedCells > 0);
+    puzzlePruned = true;
   }
 
-  int pruneCellPossibilities() {
+  int _pruneCellPossibilities() {
     var solvedCells = 0;
     for (var row = 0; row < _gridCells.length; row++) {
       var rowValues = [];
@@ -144,12 +176,15 @@ class Grid {
         if (!_gridCells[row][column].getMutability()) {
           continue;
         }
+
+        var outerCellSubGridMarker = _gridCells[row][column].getSubGridMarker();
+
         // Prune values in same row
         for (var i = 0; i < rowValues.length; i++) {
           if (column == i) {
             continue;
           }
-          if (this._gridCells[row][column].removePossibility(rowValues[i])) {
+          if (_gridCells[row][column].removePossibility(rowValues[i])) {
             solvedCells++;
           }
         }
@@ -162,7 +197,7 @@ class Grid {
           if (_gridCells[rowInner][column].getMutability() == false) {
             var cellValue = -1;
             cellValue = _gridCells[rowInner][column].getValue();
-            if (this._gridCells[row][column].removePossibility(cellValue)) {
+            if (_gridCells[row][column].removePossibility(cellValue)) {
               solvedCells++;
             }
           }
@@ -181,9 +216,9 @@ class Grid {
 
             if (_gridCells[rowInner][columnInner].getMutability() == false &&
                 _gridCells[rowInner][columnInner].getSubGridMarker() ==
-                    _gridCells[row][column].getSubGridMarker()) {
+                    outerCellSubGridMarker) {
               var cellValue = _gridCells[rowInner][columnInner].getValue();
-              if (this._gridCells[row][column].removePossibility(cellValue)) {
+              if (_gridCells[row][column].removePossibility(cellValue)) {
                 solvedCells++;
               }
 
@@ -201,12 +236,12 @@ class Grid {
       }
     }
 
-    emptyCellCount -= solvedCells;
+    _emptyCellCount -= solvedCells;
     return solvedCells;
   }
 
   // Record locations of all unsolved mutable cells in the grid
-  void setupMutableCellStack() {
+  void _setupMutableCellStack() {
     List<OperationHistory> mutableCells = [];
 
     for (var row = 0; row < _gridCells.length; row++) {
@@ -223,7 +258,7 @@ class Grid {
     // This is to ensure that operation history stack can be used with MRV hueristic in backtracking
     if (useMrv) {
       mutableCells.sort(
-          (a, b) => b._cellPossibilityCount.compareTo(a._cellPossibilityCount));
+          (a, b) => b.cellPossibilityCount.compareTo(a.cellPossibilityCount));
     }
 
     for (var cell in mutableCells) {
@@ -231,30 +266,29 @@ class Grid {
     }
   }
 
-  void resetOperationHistoryStacks() {
+  void _resetOperationHistoryStacks() {
     if (_solvedCells.isNotEmpty) {
-      _solvedCells = new Stack<OperationHistory>();
+      _solvedCells = Stack<OperationHistory>();
     }
     if (_cellsToSolve.isNotEmpty) {
-      _cellsToSolve = new Stack<OperationHistory>();
+      _cellsToSolve = Stack<OperationHistory>();
     }
   }
 
   // Returns true once puzzle is solved, false if puzzle is impossible to solve
   bool solveViaBacktracking() {
-    var puzzleSolved = false;
-    resetOperationHistoryStacks();
+    _pruneCells();
 
-    setupMutableCellStack();
+    resetPuzzle();
 
-    puzzleSolved = backtrackStep();
+    var puzzleSolved = _backtrackStep();
 
     return puzzleSolved;
   }
 
-  bool checkCellLegality(int row, int column, int cellValue) {
+  bool _checkCellLegality(int row, int column, int cellValue) {
     // Check whether cell is legal in row
-    for (int i = 0; i < _gridCells[row].length; i++) {
+    for (var i = 0; i < _gridCells[row].length; i++) {
       if (i == column) {
         continue;
       }
@@ -264,7 +298,7 @@ class Grid {
     }
 
     // Check whether cell is legal in column
-    for (int j = 0; j < _gridCells.length; j++) {
+    for (var j = 0; j < _gridCells.length; j++) {
       if (j == row) {
         continue;
       }
@@ -294,7 +328,7 @@ class Grid {
     return true;
   }
 
-  void lcvSortCellPossibilities(int row, int column) {
+  void _lcvSortCellPossibilities(int row, int column) {
     var cellPossibilities = _gridCells[row][column].getPossibilities();
     List<Tuple2<int, int>> cellPossibilityScoreTuple = [];
 
@@ -307,7 +341,7 @@ class Grid {
         if (i == column) {
           continue;
         }
-        if (_gridCells[row][i]._mutable) {
+        if (_gridCells[row][i].getMutability()) {
           if (_gridCells[row][i].getSubGridMarker() ==
               _gridCells[row][column].getSubGridMarker()) {
             continue;
@@ -324,7 +358,7 @@ class Grid {
         if (j == row) {
           continue;
         }
-        if (_gridCells[j][column]._mutable) {
+        if (_gridCells[j][column].getMutability()) {
           if (_gridCells[j][column].getSubGridMarker() ==
               _gridCells[row][column].getSubGridMarker()) {
             continue;
@@ -347,7 +381,7 @@ class Grid {
             continue;
           }
 
-          if (_gridCells[rowInner][columnInner]._mutable &&
+          if (_gridCells[rowInner][columnInner].getMutability() &&
               _gridCells[rowInner][columnInner].getSubGridMarker() ==
                   _gridCells[row][column].getSubGridMarker()) {
             if (_gridCells[rowInner][columnInner]
@@ -375,11 +409,11 @@ class Grid {
     _gridCells[row][column].setPossibleValues(sortedPossibilities);
   }
 
-  bool forwardCheckLegalityCheck(int row, int column) {
+  bool _forwardCheckLegalityCheck(int row, int column) {
     var targetCellPossibilities = _gridCells[row][column].getPossibilities();
     var legalMovesLeft = false;
     for (var possibility in targetCellPossibilities) {
-      if (checkCellLegality(row, column, possibility) == true) {
+      if (_checkCellLegality(row, column, possibility) == true) {
         legalMovesLeft = true;
         break;
       }
@@ -387,21 +421,23 @@ class Grid {
     return legalMovesLeft;
   }
 
-  bool forwardCheckPossibilities(int row, int column) {
+  bool _forwardCheckPossibilities(int row, int column) {
     // For each mutable cell related to the current cell
     // Check if they have any legal moves left at this point in the game
     // If any cell reports 0 moves left, then return false
+    var outerCellSubGridMarker = _gridCells[row][column].getSubGridMarker();
+
     for (var i = 0; i < _gridCells[row].length; i++) {
       if (i == column) {
         continue;
       }
-      if (_gridCells[row][i]._mutable && _gridCells[row][i].getValue() == 0) {
-        if (_gridCells[row][i].getSubGridMarker() ==
-            _gridCells[row][column].getSubGridMarker()) {
+      if (_gridCells[row][i].getMutability() &&
+          _gridCells[row][i].getValue() == 0) {
+        if (_gridCells[row][i].getSubGridMarker() == outerCellSubGridMarker) {
           continue;
         }
 
-        var targetLegalMovesLeft = forwardCheckLegalityCheck(row, i);
+        var targetLegalMovesLeft = _forwardCheckLegalityCheck(row, i);
         if (targetLegalMovesLeft == false) {
           return false;
         }
@@ -412,14 +448,14 @@ class Grid {
       if (j == row) {
         continue;
       }
-      if (_gridCells[j][column]._mutable &&
+      if (_gridCells[j][column].getMutability() &&
           _gridCells[j][column].getValue() == 0) {
         if (_gridCells[j][column].getSubGridMarker() ==
-            _gridCells[row][column].getSubGridMarker()) {
+            outerCellSubGridMarker) {
           continue;
         }
 
-        var targetLegalMovesLeft = forwardCheckLegalityCheck(j, column);
+        var targetLegalMovesLeft = _forwardCheckLegalityCheck(j, column);
         if (targetLegalMovesLeft == false) {
           return false;
         }
@@ -434,11 +470,11 @@ class Grid {
           continue;
         }
 
-        if (_gridCells[rowInner][columnInner]._mutable &&
+        if (_gridCells[rowInner][columnInner].getMutability() &&
             _gridCells[rowInner][columnInner].getSubGridMarker() ==
-                _gridCells[row][column].getSubGridMarker()) {
+                outerCellSubGridMarker) {
           var targetLegalMovesLeft =
-              forwardCheckLegalityCheck(rowInner, columnInner);
+              _forwardCheckLegalityCheck(rowInner, columnInner);
           if (targetLegalMovesLeft == false) {
             return false;
           }
@@ -450,11 +486,11 @@ class Grid {
   }
 
   // Returns true if move was successful, false if move failed
-  bool backtrackStep() {
+  bool _backtrackStep() {
     if (_cellsToSolve.isEmpty) {
       return true;
     }
-    backtrackingStepCount += 1;
+    _backtrackingStepCount += 1;
 
     var moveSuccessful = false;
     var currentOperation = _cellsToSolve.pop();
@@ -462,38 +498,38 @@ class Grid {
 
     // Adjust current cell possibilities via LCV score-based possibility sorting
     if (useLcv) {
-      lcvSortCellPossibilities(currentOperation._cellRowPosition,
-          currentOperation._cellColumnPosition);
+      _lcvSortCellPossibilities(currentOperation.cellRowPosition,
+          currentOperation.cellColumnPosition);
     }
 
-    var movesLeft = _gridCells[currentOperation._cellRowPosition]
-            [currentOperation._cellColumnPosition]
+    var movesLeft = _gridCells[currentOperation.cellRowPosition]
+            [currentOperation.cellColumnPosition]
         .adjustValue();
 
     while (movesLeft) {
-      var cellValue = _gridCells[currentOperation._cellRowPosition]
-              [currentOperation._cellColumnPosition]
+      var cellValue = _gridCells[currentOperation.cellRowPosition]
+              [currentOperation.cellColumnPosition]
           .getValue();
 
-      if (checkCellLegality(currentOperation._cellRowPosition,
-          currentOperation._cellColumnPosition, cellValue)) {
+      if (_checkCellLegality(currentOperation.cellRowPosition,
+          currentOperation.cellColumnPosition, cellValue)) {
         var safeToStepForward = true;
         if (useForwardChecking) {
-          safeToStepForward = forwardCheckPossibilities(
-              currentOperation._cellRowPosition,
-              currentOperation._cellColumnPosition);
+          safeToStepForward = _forwardCheckPossibilities(
+              currentOperation.cellRowPosition,
+              currentOperation.cellColumnPosition);
         }
 
         if (safeToStepForward) {
-          moveSuccessful = backtrackStep();
+          moveSuccessful = _backtrackStep();
           if (moveSuccessful) {
             break;
           }
         }
       }
 
-      movesLeft = _gridCells[currentOperation._cellRowPosition]
-              [currentOperation._cellColumnPosition]
+      movesLeft = _gridCells[currentOperation.cellRowPosition]
+              [currentOperation.cellColumnPosition]
           .adjustValue();
     }
 
@@ -509,23 +545,20 @@ class Grid {
       for (var column = 0; column < _gridCells.length; column++) {
         stdout.write(_gridCells[row][column].getValue());
       }
-      print('');
     }
   }
 
-  int getRemainingCellsToSolveCount() => emptyCellCount;
-  int getBacktrackingStepCount() => backtrackingStepCount;
-
   void resetPuzzle() {
+    _resetOperationHistoryStacks();
+
+    _setupMutableCellStack();
+
     for (var row = 0; row < _gridCells.length; row++) {
       for (var column = 0; column < _gridCells[row].length; column++) {
-        if (_gridCells[row][column]._mutable) {
-          _gridCells[row][column]._currentValue = 0;
-          _gridCells[row][column]._possibleValueSelection = -1;
-        }
+        _gridCells[row][column].resetMutableCell();
       }
     }
 
-    backtrackingStepCount = 0;
+    _backtrackingStepCount = 0;
   }
 }

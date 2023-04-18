@@ -143,11 +143,9 @@ void main() {
   puzzle.loadLine([0, 1, 0, 0, 0, 0, 0, 2, 0]);
   puzzle.loadLine([0, 0, 7, 0, 6, 8, 0, 0, 1]);
 
-  puzzle.pruneCells();
-
   var puzzleSolved = false;
 
-  var benchmarkIterations = 1;
+  var benchmarkIterations = 10000;
   Stopwatch stopwatch = Stopwatch();
 
   // Warm up the function to make the benchmark more accurate

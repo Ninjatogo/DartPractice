@@ -30,7 +30,8 @@ class SudokuHomePage extends StatefulWidget {
 }
 
 class _SudokuHomePageState extends State<SudokuHomePage> {
-  var puzzle = Grid(3);
+  var puzzle = Grid(
+      gridDiameter: 3, useMrv: true, useLcv: false, useForwardChecking: true);
   bool puzzleLoaded = false;
 
   void loadPuzzle() {
@@ -75,8 +76,8 @@ class SudokuGrid extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const Text(
+        children: const <Widget>[
+          Text(
             'You have pushed the button this many times:',
           ),
         ],
