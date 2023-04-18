@@ -4,14 +4,14 @@ import 'package:tuple/tuple.dart';
 
 /// Cell - This is the smallest object of the puzzle
 /// Use this to store the current value and the list of possible values
-class Cell {
+class _Cell {
   int _currentValue = 0;
   bool _mutable = false;
   List<int> _possibleValues = [];
   int _possibleValueSelection = -1;
   int _subGridMarker = -1;
 
-  Cell(this._currentValue, this._subGridMarker, List<int> possibleValues) {
+  _Cell(this._currentValue, this._subGridMarker, List<int> possibleValues) {
     if (_currentValue == 0) {
       _mutable = true;
       _possibleValues = possibleValues.toList();
@@ -75,8 +75,8 @@ class Cell {
   }
 }
 
-class OperationHistory {
-  OperationHistory(
+class _OperationHistory {
+  _OperationHistory(
       this.cellRowPosition, this.cellColumnPosition, this.cellPossibilityCount);
 
   var cellRowPosition = 0;
@@ -94,9 +94,9 @@ class Grid {
   var useLcv = false;
   var useForwardChecking = false;
   var puzzlePruned = false;
-  List<List<Cell>> _gridCells = [];
-  Stack<OperationHistory> _solvedCells = Stack<OperationHistory>();
-  Stack<OperationHistory> _cellsToSolve = Stack<OperationHistory>();
+  List<List<_Cell>> _gridCells = [];
+  Stack<_OperationHistory> _solvedCells = Stack<_OperationHistory>();
+  Stack<_OperationHistory> _cellsToSolve = Stack<_OperationHistory>();
   int getRemainingCellsToSolveCount() => _emptyCellCount;
   int getBacktrackingStepCount() => _backtrackingStepCount;
   List<List<int>> getGridCellValues() {
@@ -120,7 +120,7 @@ class Grid {
       this.useForwardChecking = false});
 
   void loadLine(List<int> inputCells) {
-    List<Cell> cells = [];
+    List<_Cell> cells = [];
     var row = 1;
     var possibleValues = [for (var i = 1; i < inputCells.length + 1; i++) i];
 
@@ -141,7 +141,7 @@ class Grid {
         _emptyCellCount++;
       }
 
-      var cell = Cell(inputCells[i], subgridMarker, possibleValues);
+      var cell = _Cell(inputCells[i], subgridMarker, possibleValues);
 
       cells.add(cell);
     }
@@ -242,13 +242,13 @@ class Grid {
 
   // Record locations of all unsolved mutable cells in the grid
   void _setupMutableCellStack() {
-    List<OperationHistory> mutableCells = [];
+    List<_OperationHistory> mutableCells = [];
 
     for (var row = 0; row < _gridCells.length; row++) {
       for (var column = 0; column < _gridCells[row].length; column++) {
         if (_gridCells[row][column].getMutability() &&
             _gridCells[row][column].getValue() == 0) {
-          mutableCells.add(OperationHistory(
+          mutableCells.add(_OperationHistory(
               row, column, _gridCells[row][column].getPossibilityCount()));
         }
       }
@@ -268,10 +268,10 @@ class Grid {
 
   void _resetOperationHistoryStacks() {
     if (_solvedCells.isNotEmpty) {
-      _solvedCells = Stack<OperationHistory>();
+      _solvedCells = Stack<_OperationHistory>();
     }
     if (_cellsToSolve.isNotEmpty) {
-      _cellsToSolve = Stack<OperationHistory>();
+      _cellsToSolve = Stack<_OperationHistory>();
     }
   }
 
